@@ -23,19 +23,26 @@ int main(int argc, char **argv) {
    char *host = NULL;
    char *interface = NULL;
 	int arp_type = 0;
+	int c_pid = 0;
+	int do_fork = 0;
 
-   struct arg_struct *arpArgs;
+	unsigned char *packet;
 
-	if(argc < 6) {
+	if (argc < 6) {
 		print_usage();
 	}
 
 	/* Command line arguments */
-	while ((opt = getopt(argc, argv, "i:r:q:t")) != -1) {
+	while ((opt = getopt(argc, argv, "i:r:f:q:t")) != -1) {
 		switch (opt) {
 			case 'i':
 				interface = optarg;
 				break;
+			case 'f':
+				if ( !(arp_type = ARP_REPLY) ) {
+					print_usage();
+				}
+				do_fork = 1;				
 			case 'r':
 				if (!arp_type) {
 					arp_type = ARP_REPLY;
@@ -65,6 +72,32 @@ int main(int argc, char **argv) {
 	if (!host || !target || !interface || !arp_type) {
 		print_usage();
 	}
+
+	/* if we must fork, build reply */
+	if (do_fork) {
+		switch ((c_pid = fork())) {
+			case -1: 
+				fprintf(stderr, "Fork failed\n");
+				exit(EXIT_FAILURE);
+				break;
+			case 0:
+				/* Child process executes and switches host and target */
+				if ( (packet = arp_type == ARP_REPLY ? build_reply() : build_request()) != 0) { 
+	   			return send_arp(packet);
+				}else {
+					exit(EXIT_FAILURE);	
+				}
+				break;
+		}
+	}
+
+	/* Parent and single process execute this */	
+	if ( (packet = arp_type == ARP_REPLY ? build_reply() : build_request()) != 0){ 
+		return send_arp(packet);
+	}else {
+	   exit(EXIT_FAILURE);	
+	}
+			
 	
 }
 
@@ -74,12 +107,15 @@ void print_usage() {
 }
 
 unsigned char *build_reply() {
+	return 0;
 }
 
 unsigned char *build_request() {
+	return 0;
 }
 
-unsigned char *send_arp() {
+int send_arp(unsigned char *packet) {
+	return 0;
 }
 
 
@@ -119,7 +155,7 @@ void print_mac(unsigned char *macPtr) {
 }
 
 
-void print_buf(u_char *packet, uint32_t size) {
+void print_buf(unsigned char *packet, uint32_t size) {
    int ctr;
 
    printf("Packet: \n");
