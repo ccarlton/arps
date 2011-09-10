@@ -13,11 +13,11 @@ ALL=arps
 all:  $(ALL)
 
 arps: arps.o
-   $(CC) $(LDFLAGS) -o $@ $^
+	$(CC) $(LDFLAGS) -o $@ $^
 
 arps.o: arps.c
-   $(CC) $(CFLAGS) -c $<
+	$(CC) $(CFLAGS) -c $<
 
 clean:
-   rm -rf core* *.o *.gch $(ALL)
+	rm -rf core* *.o *.gch $(ALL)
 

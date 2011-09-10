@@ -9,6 +9,9 @@
 #define ARP_REPLY		0x0002
 
 void print_usage();
+unsigned char *build_request(); 
+unsigned char *build_reply(); 
+int send_arp(unsigned char *packet);
 
 struct eth_header {
 	uint16_t dmac;
