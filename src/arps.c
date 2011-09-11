@@ -33,16 +33,18 @@ int main(int argc, char **argv) {
 	}
 
 	/* Command line arguments */
-	while ((opt = getopt(argc, argv, "i:r:f:q:t")) != -1) {
+	while ((opt = getopt(argc, argv, "i:rqft:")) != -1) {
 		switch (opt) {
 			case 'i':
 				interface = optarg;
 				break;
 			case 'f':
-				if ( !(arp_type = ARP_REPLY) ) {
+				if ( (arp_type != ARP_REPLY) ) {
 					print_usage();
+				} else {
+					do_fork = 1;
 				}
-				do_fork = 1;				
+				break;				
 			case 'r':
 				if (!arp_type) {
 					arp_type = ARP_REPLY;
@@ -69,6 +71,9 @@ int main(int argc, char **argv) {
 		host = argv[optind];
 	}
 
+	if(DEBUG) { 
+		printf("Host: %s\nTarget: %s\nInterface: %s\nType: %x\nFork: %d\n", host, target, interface, arp_type, do_fork);
+	}
 	if (!host || !target || !interface || !arp_type) {
 		print_usage();
 	}
@@ -107,6 +112,7 @@ void print_usage() {
 }
 
 unsigned char *build_reply() {
+	
 	return 0;
 }
 

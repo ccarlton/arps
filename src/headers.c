@@ -8,6 +8,8 @@
 #define ARP_REQUEST  0x0001
 #define ARP_REPLY		0x0002
 
+#define DEBUG 1
+
 void print_usage();
 unsigned char *build_request(); 
 unsigned char *build_reply(); 
