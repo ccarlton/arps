@@ -7,19 +7,28 @@
 #define ETH_TYPE     0x0806
 #define ARP_REQUEST  0x0001
 #define ARP_REPLY		0x0002
-
-#define DEBUG 1
+#define HTYPE 			0x0001
+#define PTYPE			0x0800
+#define HLEN			0x0006
+#define PLEN 			0x0004
+#define DEBUG			0 
 
 void print_usage();
 unsigned char *build_request(); 
-unsigned char *build_reply(); 
-int send_arp(unsigned char *packet);
+unsigned char *build_reply(char *interface, char *target, char *host); 
+int send_arp(unsigned char *packet, char *interface); 
+void print_buf(unsigned char *packet, uint32_t size);
+int send_ping(char *target); 
+char *formatConvertMac(char *asciiMac);
+void print_mac(unsigned char *macPtr); 
 
 struct eth_header {
-	uint16_t dmac;
-	uint16_t smac;
-	unsigned char type[2];
-};
+	uint32_t dmac;
+	uint16_t dmacx;
+	uint32_t smac;
+	uint16_t smacx;
+	uint16_t type;
+}__attribute__((packed));
 
 struct arp_header {
 	uint16_t htype;
@@ -33,4 +42,4 @@ struct arp_header {
 	uint32_t dmac;
 	uint16_t dmacx;
 	uint32_t dip;
-};
+}__attribute__((packed));
